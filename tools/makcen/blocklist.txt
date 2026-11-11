@@ -1,0 +1,1 @@
+# Forms that must never be in the dictionary even though Hunspell accepts them. One per line.

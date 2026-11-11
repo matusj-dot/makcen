@@ -1,0 +1,35 @@
+# Vulgar words. They are valid (never "corrected" into something else) but flagged, so the
+# keyboard only suggests them when "Block offensive words" is turned off in settings.
+kurva
+kurvy
+kurvu
+hovno
+hovná
+kokot
+kokoti
+piča
+piče
+piči
+piču
+doriti
+pojeb
+pojebaný
+pojebané
+skurvysyn
+seriem
+serem
+srať
+vysrať
+nasrať
+nasratý
+posratý
+posraté
+zasraný
+zasranú
+zasratý
+jebať
+jebem
+vyjebaný
+vyjebanec
+nahovno
+šukať

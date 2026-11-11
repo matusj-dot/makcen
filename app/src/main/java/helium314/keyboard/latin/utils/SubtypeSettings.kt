@@ -224,11 +224,14 @@ object SubtypeSettings {
                 ?: LocaleUtils.getBestMatch(locale, resourceSubtypesByLocale.keys) {it}?.let { resourceSubtypesByLocale[it] }
             subtypesOfLocale?.firstOrNull()
         }
-        if (subtypes.isEmpty()) {
+        // Mäkčeň: Slovak is always the first default subtype, whatever the system language is
+        val slovak = resourceSubtypesByLocale[Locale.forLanguageTag("sk")]?.firstOrNull()
+        if (slovak != null) systemSubtypes.add(slovak)
+        if (subtypes.isEmpty() && slovak == null) {
             // hardcoded fallback to en-US for weird cases
             systemSubtypes.add(resourceSubtypesByLocale[Locale.US]!!.first())
         } else {
-            systemSubtypes.addAll(subtypes)
+            systemSubtypes.addAll(subtypes.filter { it != slovak })
         }
         return systemSubtypes
     }

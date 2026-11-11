@@ -1,0 +1,82 @@
+# Words added by hand to the Slovak dictionary. One per line: word [frequency 1-240]
+# Without a frequency the corpus count is used (or 120 when the corpus has none).
+# A word listed here is also protected from being dropped as a "plain twin" (see build_dictionary.py).
+
+# --- gaps in the Hunspell data: pronouns and other basic forms ---
+ten
+našom
+našou
+nášmu
+mňou
+tvôj
+svedkovia
+
+# --- everyday vocabulary Hunspell does not know ---
+policajtka
+vodičák
+randiť
+pokecať
+papierovačky
+paranoidný
+hyperpriestoru
+federáli
+drinkov
+labák
+lúzer
+tlsťoch
+srandujem
+sranduješ
+nápodobne
+vďakabohu
+čúrať
+
+# --- colloquial and loanwords (delete what you do not want suggested) ---
+kámo
+kamoško
+čauko
+okej
+okay
+sorry
+cool
+wow
+vau
+hmm
+pardón
+dík
+díky
+bejby
+brácho
+kľud
+kľudne
+kľudný
+ukľudni
+ukľudnite
+ukľudniť
+
+# --- abbreviations (upper-case forms are only kept when listed here) ---
+OK
+USA
+EÚ
+EU
+SR
+ČR
+OSN
+NATO
+FBI
+CIA
+DNA
+GPS
+SMS
+TV
+PC
+CD
+DVD
+WC
+IQ
+DPH
+MHD
+PIN
+VIP
+UFO
+SUV
+HIV

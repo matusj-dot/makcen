@@ -2,6 +2,13 @@ name: Build debug APK
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - '*.kts'
+      - 'gradle/**'
+      - '.github/workflows/build-debug-apk.yml'
 
 jobs:
   build:
@@ -28,7 +35,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HeliBoard-debug
+          name: Makcen-debug
           path: app/build/outputs/apk/debug/*-debug*.apk
 
       - name: Archive reports for failed job
