@@ -24,7 +24,7 @@ The downloads total about 700 MB. The first run validates ~880,000 forms with Hu
 
 ## Data licences
 
-- Slovak National Corpus frequency lists (prim-11.0-public-all word forms and 2-grams): free download, no reuse terms stated on the page – confirmation requested from the corpus team
+- Slovak National Corpus frequency lists (prim-11.0-public-all word forms and 2-grams): free download, no reuse terms stated on the page – still to be confirmed with the corpus team
 - FrequencyWords (OpenSubtitles 2018): CC BY-SA 4.0
 - sk-spell Hunspell dictionary: GPL 2 / LGPL 2.1 / MPL 1.1
 - Corpus counts for Czech and English are used only as a noise filter.

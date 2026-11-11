@@ -31,7 +31,7 @@ Details: [tools/makcen/README.md](tools/makcen/README.md).
 ## Credits and licence
 
 - Keyboard: [HeliBoard](https://github.com/HeliBorg/HeliBoard) and its contributors, GPL-3.0. The original README is kept in [docs/HELIBOARD_README.md](docs/HELIBOARD_README.md).
-- Word frequencies and word pairs: frequency lists of the [Slovak National Corpus](https://korpus.sk/en/frequency-lists-of-lemmata-word-forms-and-parts-of-speech-from-the-publicly-available-snc-corpora/), corpus prim-11.0-public-all. Bratislava: Jazykovedný ústav Ľ. Štúra SAV 2023. The lists are published for download without stated reuse terms; permission to distribute this derived dictionary is being confirmed with the corpus team.
+- Word frequencies and word pairs: frequency lists of the [Slovak National Corpus](https://korpus.sk/en/frequency-lists-of-lemmata-word-forms-and-parts-of-speech-from-the-publicly-available-snc-corpora/), corpus prim-11.0-public-all. The lists are published for download without stated reuse terms; whether this derived dictionary may be distributed still has to be confirmed with the corpus team.
 - Informal word frequencies: [FrequencyWords](https://github.com/hermitdave/FrequencyWords) by Hermit Dave, from OpenSubtitles 2018, CC BY-SA 4.0.
 - Word validity: [Slovak Hunspell dictionary](https://github.com/sk-spell/hunspell-sk) by the sk-spell project, GPL / LGPL / MPL.
 - Dictionary compiler: AOSP dicttool via [aosp-dictionary-tools](https://github.com/remi0s/aosp-dictionary-tools), Apache-2.0.
