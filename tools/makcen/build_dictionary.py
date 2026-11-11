@@ -1,27 +1,38 @@
 #!/usr/bin/env python3
 """Build the Mäkčeň Slovak main dictionary (AOSP .combined wordlist) from open data.
 
-Pipeline
-  1. Read the Slovak word-form frequency list (OpenSubtitles 2018, via FrequencyWords).
-  2. Check every form against the Slovak Hunspell dictionary (sk-spell). Forms that are
-     only valid capitalised / upper-cased are stored that way (Bratislava, NATO).
-     Superlatives (naj- + valid form) count as valid. Upper-case-only forms are kept only
-     when listed in extra_words.txt, because lower-cased subtitles turn "co" into "CO".
-  3. Forms Hunspell does not know are NOT added automatically - the corpus is full of
-     misspellings (nieje, kôli), Czech and English. Frequent ones that look Slovak are
-     written to build/candidates.txt for a human to promote into extra_words.txt.
-  4. Subtitles are often typed without diacritics, which inflates e.g. "mat" at the
-     expense of "mať". The sloppy-typing rate is estimated from unambiguous pairs and
-     subtracted from valid diacritic-free forms. A plain form whose count is explained
-     almost entirely by sloppy typing (zeny vs. ženy) is dropped, so that the keyboard
-     restores the accented word; list it in extra_words.txt to keep it.
-  5. Hand-maintained lists are merged in: extra_words.txt, offensive.txt, blocklist.txt.
-  6. Counts are mapped to the 0-255 log scale used by AOSP dictionaries.
+Sources
+  SNC   Slovak National Corpus, prim-11.0-public-all: word-form frequencies (case-sensitive)
+        and 2-grams. Edited written Slovak, 1.5 billion words.
+  SUBS  OpenSubtitles 2018 word-form frequencies (FrequencyWords). Informal, chat-like,
+        lower-cased, noisy.
+  Hunspell sk_SK (sk-spell) decides which forms are valid Slovak.
 
-Run fetch_sources.sh first. Output: build/main_sk.combined (+ build/report.json).
+Pipeline
+  1. Candidates: forms seen often enough in SNC or SUBS.
+  2. Casing comes from SNC: a form mostly written in lower case is stored in lower case;
+     otherwise as Capitalised or UPPER (Bratislava, EÚ). A lower-case word that also has a
+     strong upper-case twin keeps both (nato / NATO).
+  3. Validity: Hunspell must accept the form. Superlatives (naj- + valid form) count as valid.
+     Forms Hunspell does not know are NOT added automatically, with one exception: proper
+     nouns that are frequent in SNC (Fico, Slovnaft) - written to build/auto_names.txt.
+     Frequent unknown lower-case forms go to build/candidates.txt for a human to promote
+     into extra_words.txt.
+  4. Text typed without diacritics inflates plain forms ("zeny" for "ženy"). The sloppy-typing
+     rate is estimated per source from unambiguous pairs and subtracted. A plain form is dropped
+     when both sources explain it as sloppy typing, or when its accented twin is 50 times more
+     frequent (mat / mať) - so the keyboard restores the accented word. This is a deliberate
+     exception to "never correct a valid word": see build/dropped_plain_forms.txt, and list a
+     word in extra_words.txt to keep it.
+  5. Frequencies: the two sources are blended by relative frequency and mapped to the 0-255
+     log scale of AOSP dictionaries.
+  6. Hand-maintained lists are merged in: extra_words.txt, offensive.txt, blocklist.txt.
+  7. Bigrams from SNC 2-grams: for each word, the most likely next words.
+
+Run fetch_sources.sh first. Output: build/main_sk.combined and reports in build/.
 Compile with: java -jar .cache/dicttool/dicttool_aosp.jar makedict -s build/main_sk.combined -d main_sk.dict
 """
-import argparse, json, math, os, re, sys, time, unicodedata
+import argparse, bz2, heapq, json, math, os, pickle, re, subprocess, sys, time, unicodedata
 from collections import defaultdict
 from multiprocessing import Pool
 
@@ -29,6 +40,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SK_LETTERS = "aáäbcčdďeéfghiíjklĺľmnňoóôpqrŕsštťuúvwxyýzž"
 WORD_RE = re.compile(f"^[{SK_LETTERS}]+(-[{SK_LETTERS}]+)?$")
 DIA = set("áäčďéíĺľňóôŕšťúýž")
+STEP = math.log(1.15)   # one frequency unit = factor 1.15 in probability
+TOP_F = 240
 
 
 def strip_dia(w):
@@ -43,6 +56,27 @@ def read_freq(path, min_count=1):
             if len(p) == 2 and p[1].isdigit() and int(p[1]) >= min_count:
                 out[p[0]] = int(p[1])
     return out
+
+
+def read_snc(cache):
+    """lower-case form -> {spelling as written: count}"""
+    pk = f"{cache}/snc/word_frequency.pickle"
+    if os.path.exists(pk):
+        with open(pk, "rb") as f:
+            return pickle.load(f)
+    agg = defaultdict(dict)
+    with bz2.open(f"{cache}/snc/word_frequency.txt.bz2", "rt", encoding="utf-8", errors="replace") as f:
+        for line in f:
+            p = line.rstrip("\n").split("\t")
+            if len(p) != 2 or not p[1].isdigit():
+                continue
+            lw = p[0].lower()
+            if WORD_RE.match(lw) and len(lw) <= 40:
+                agg[lw][p[0]] = agg[lw].get(p[0], 0) + int(p[1])
+    agg = dict(agg)
+    with open(pk, "wb") as f:
+        pickle.dump(agg, f)
+    return agg
 
 
 def read_list(name):
@@ -69,19 +103,13 @@ def _init(base):
 
 
 def _check(w):
-    """Returns the valid spelling of w (lower, Capitalised or UPPER) or ''."""
     try:
         if _dic.lookup(w):
-            return w
-        if _dic.lookup(w.capitalize()):
-            return w.capitalize()
-        if len(w) <= 5 and _dic.lookup(w.upper()):
-            return w.upper()
-        if w.startswith("naj") and len(w) > 5 and _dic.lookup(w[3:]):
-            return w  # superlative
+            return True
+        lw = w.lower()
+        return lw.startswith("naj") and len(lw) > 5 and bool(_dic.lookup(lw[3:]))  # superlative
     except Exception:
-        pass
-    return ""
+        return False
 
 
 def validate(words, base, cache_path, jobs):
@@ -95,117 +123,166 @@ def validate(words, base, cache_path, jobs):
         with Pool(jobs, initializer=_init, initargs=(base,)) as pool:
             for i, res in enumerate(pool.imap(_check, todo, chunksize=500)):
                 cache[todo[i]] = res
-                if i and i % 50000 == 0:
-                    print(f"  validated {i}/{len(todo)} ({time.time()-t:.0f}s)", file=sys.stderr)
+                if i and i % 100000 == 0:
+                    print(f"  validated {i}/{len(todo)} ({time.time()-t:.0f}s)", file=sys.stderr, flush=True)
         with open(cache_path, "w", encoding="utf-8") as f:
             json.dump(cache, f, ensure_ascii=False)
     return cache
+
+
+def casings(variants, min_lower=0.15, min_upper=0.4):
+    """Which spellings of a lower-case form to keep, from SNC casing counts -> {spelling: count}."""
+    total = sum(variants.values())
+    lw = next(iter(variants)).lower()
+    lower = variants.get(lw, 0)
+    upper = variants.get(lw.upper(), 0) if len(lw) > 1 else 0
+    out = {}
+    if lower / total >= min_lower:
+        out[lw] = total - (upper if upper / total >= min_upper else 0)
+        if upper / total >= min_upper:
+            out[lw.upper()] = upper
+    else:
+        # a name or abbreviation: keep it exactly as it is most often written (Smer-SD, ObFZ, iPhone)
+        cased = {v: c for v, c in variants.items() if v != lw}
+        out[max(cased, key=cased.get)] = total
+    return out
+
+
+def sloppy_rate(counts, valid_lower, by_stripped, min_twin):
+    """Median of count(plain invalid form) / count(its only valid accented twin)."""
+    rates = []
+    for s, twins in by_stripped.items():
+        if s in valid_lower or len(twins) != 1:
+            continue
+        t = counts.get(twins[0], 0)
+        if t >= min_twin:
+            rates.append(counts.get(s, 0) / t)
+    rates.sort()
+    return rates[len(rates) // 2] if rates else 0.0
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default=os.path.join(HERE, ".cache"))
     ap.add_argument("--out", default=os.path.join(HERE, "build"))
-    ap.add_argument("--min-count", type=int, default=2, help="minimum corpus count for Hunspell-valid forms")
-    ap.add_argument("--min-count-unknown", type=int, default=60, help="minimum count for review candidates")
-    ap.add_argument("--shadow-factor", type=float, default=2.5, help="drop a plain form when its count is below this many times the expected sloppy-typing leak")
-    ap.add_argument("--ratio", type=float, default=4.0, help="how many times more typical for Slovak than cs/en an unknown form must be")
+    ap.add_argument("--min-snc", type=int, default=20, help="minimum SNC count for a candidate form")
+    ap.add_argument("--min-subs", type=int, default=3, help="minimum subtitle count for a candidate form")
+    ap.add_argument("--snc-weight", type=float, default=0.5, help="weight of SNC in the blended frequency (rest: subtitles)")
+    ap.add_argument("--min-name", type=int, default=3000, help="SNC count from which an unknown proper noun is added automatically")
+    ap.add_argument("--shadow-factor", type=float, default=2.5, help="drop a plain form when its count is below this many times the expected sloppy-typing leak in both sources")
+    ap.add_argument("--twin-ratio", type=float, default=50, help="also drop a plain form when its accented twin is this many times more frequent")
+    ap.add_argument("--bigrams-per-word", type=int, default=8)
+    ap.add_argument("--min-bigram", type=int, default=10, help="minimum SNC count of a word pair")
+    ap.add_argument("--no-bigrams", action="store_true")
     ap.add_argument("--jobs", type=int, default=os.cpu_count() or 2)
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
 
-    sk = {w: c for w, c in read_freq(f"{a.cache}/freq/sk_full.txt", a.min_count).items() if WORD_RE.match(w) and len(w) <= 40}
-    cs = read_freq(f"{a.cache}/freq/cs_full.txt")
-    en = read_freq(f"{a.cache}/freq/en_full.txt")
-    n_sk, n_cs, n_en = (sum(read_freq(f"{a.cache}/freq/{l}_full.txt").values()) for l in ("sk", "cs", "en"))
-    print(f"{len(sk)} candidate forms", file=sys.stderr)
-
-    valid = validate(sorted(sk), f"{a.cache}/hunspell/sk_SK", f"{a.cache}/validity.json", a.jobs)
-
+    subs = {w: c for w, c in read_freq(f"{a.cache}/freq/sk_full.txt").items() if WORD_RE.match(w) and len(w) <= 40}
+    snc = read_snc(a.cache)
+    n_subs = sum(subs.values())
+    n_snc = sum(sum(v.values()) for v in snc.values())
+    snc_total = {lw: sum(v.values()) for lw, v in snc.items()}
     extra, offensive, block = read_list("extra_words.txt"), read_list("offensive.txt"), read_list("blocklist.txt")
 
-    # --- valid forms, with their proper casing -------------------------------------------------
-    counts = defaultdict(int)   # final spelling -> count
-    known = set()
-    lower_valid = {w for w in sk if valid.get(w, "") == w}
-    accented_shadow = {strip_dia(w) for w in lower_valid if DIA & set(w)}
-    for w, c in sk.items():
-        if w in block:
-            continue
-        v = valid.get(w, "")
-        if v and v != w:
-            # only valid as Capitalised / UPPER: drop acronym noise, 1-2 letter junk and
-            # accented words typed without diacritics (nam -> "Nam", really nám)
-            if v.isupper() or len(w) <= 2 or w in accented_shadow:
-                continue
-        if v:
-            counts[v] += c
-            known.add(v)
+    # --- 1+2: candidates with their spelling -------------------------------------------------------
+    # form -> [snc count, subs count]
+    forms = {}
+    for lw, total in snc_total.items():
+        if total >= a.min_snc or subs.get(lw, 0) >= a.min_subs:
+            spellings = casings(snc[lw])
+            main = max(spellings, key=spellings.get)
+            for sp, c in spellings.items():
+                forms[sp] = [c, subs.get(lw, 0) if sp == (lw if lw in spellings else main) else 0]
+    subs_only = [w for w, c in subs.items() if c >= a.min_subs and w not in snc_total]
+    for w in subs_only:
+        forms[w] = [0, subs[w]]
+    print(f"{len(forms)} candidate forms", file=sys.stderr, flush=True)
 
-    # diacritic siblings among valid forms: stripped -> [forms]
+    # --- 3: validity ---------------------------------------------------------------------------------
+    to_check = set(forms) | {w.capitalize() for w in subs_only}
+    valid = validate(sorted(to_check), f"{a.cache}/hunspell/sk_SK", f"{a.cache}/validity2.json", a.jobs)
+    for w in subs_only:   # subtitles are lower-cased: restore names Hunspell knows (peter -> Peter)
+        cap = w.capitalize()
+        if not valid[w] and valid[cap] and len(w) > 2 and cap not in forms:
+            forms[cap] = forms.pop(w)
+
+    good = {w for w in forms if valid.get(w) and w not in block}
+    valid_lower = {w for w in good if w == w.lower()}
+
+    # accented valid forms by their diacritic-free spelling
     by_stripped = defaultdict(list)
-    for w in counts:
-        by_stripped[strip_dia(w.lower())].append(w)
+    for w in valid_lower:
+        if DIA & set(w):
+            by_stripped[strip_dia(w)].append(w)
 
-    # --- sloppy-typing rate: invalid diacritic-free form vs. its only valid accented sibling ----
-    rates = []
-    for w, c in sk.items():
-        if valid.get(w, "") or DIA & set(w):
+    # --- 4: sloppy typing ----------------------------------------------------------------------------
+    snc_c = {w: v[0] for w, v in forms.items()}
+    subs_c = {w: v[1] for w, v in forms.items()}
+    # plain invalid forms are needed for the estimate even if they are not candidates
+    rate_snc = sloppy_rate({**snc_total, **{w: snc_c[w] for w in valid_lower}}, valid_lower, by_stripped, 100000)
+    rate_subs = sloppy_rate({**subs, **{w: subs_c[w] for w in valid_lower}}, valid_lower, by_stripped, 5000)
+
+    shadow_dropped, deflated = [], 0
+    for s, twins in by_stripped.items():
+        if s not in valid_lower:
             continue
-        sib = by_stripped.get(w, [])
-        if len(sib) == 1 and counts[sib[0]] >= 5000:
-            rates.append(c / counts[sib[0]])
-    rates.sort()
-    sloppy = rates[len(rates) // 2] if rates else 0.0
-
-    deflated, shadow_dropped = 0, []
-    for s, forms in by_stripped.items():
-        plain = [w for w in forms if w.lower() == s]
-        accented = [w for w in forms if w.lower() != s]
-        if plain and accented:
-            leak = sloppy * sum(counts[w] for w in accented)
-            for w in plain:
-                if counts[w] <= a.shadow_factor * leak and w not in extra:
-                    shadow_dropped.append((w, counts[w], max(accented, key=lambda x: counts[x])))
-                    del counts[w]
-                    known.discard(w)
-                    continue
-                new = max(1, int(counts[w] - leak / len(plain)))
-                if new != counts[w]:
-                    deflated += 1
-                    counts[w] = new
-
-    # --- forms Hunspell does not know ------------------------------------------------------------
-    unknown_kept, unknown_dropped = [], []
-    for w, c in sk.items():
-        if valid.get(w, "") or w in block or c < a.min_count_unknown or len(w) < 2:
+        leak_snc = rate_snc * sum(snc_c[t] for t in twins)
+        leak_subs = rate_subs * sum(subs_c[t] for t in twins)
+        p_plain = a.snc_weight * max(0, snc_c[s] - leak_snc) / n_snc + (1 - a.snc_weight) * max(0, subs_c[s] - leak_subs) / n_subs
+        p_twins = sum(a.snc_weight * snc_c[t] / n_snc + (1 - a.snc_weight) * subs_c[t] / n_subs for t in twins)
+        sloppy_only = snc_c[s] <= a.shadow_factor * leak_snc and subs_c[s] <= a.shadow_factor * leak_subs
+        if s not in extra and (sloppy_only or p_plain * a.twin_ratio < p_twins):
+            shadow_dropped.append((s, snc_c[s], subs_c[s], max(twins, key=lambda t: snc_c[t] + subs_c[t])))
+            good.discard(s)
             continue
-        if not (DIA & set(w)) and by_stripped.get(w):
-            continue  # a valid word typed without diacritics
-        rel = c / n_sk
-        foreign = max(cs.get(w, 0) / n_cs, en.get(w, 0) / n_en)
-        if strip_dia(w) in by_stripped:
-            continue  # same letters as a valid word, wrong diacritics (možem, ďaľší)
-        if rel >= a.ratio * foreign:
-            unknown_kept.append((w, c))
-        else:
-            unknown_dropped.append((w, c))
+        forms[s] = [max(0, int(snc_c[s] - leak_snc)), max(0, int(subs_c[s] - leak_subs))]
+        deflated += 1
+    # wrongly cased twins of accented words (subtitle "nam" -> Hunspell "Nam", really "nám")
+    for w in list(good):
+        if w != w.lower() and forms[w][0] == 0 and w.lower() in by_stripped:
+            good.discard(w)
 
-    # --- scale to AOSP frequencies ----------------------------------------------------------------
-    top = max(counts.values())
+    # --- proper nouns Hunspell does not know, review candidates -----------------------------------
+    cs_sub, en_sub = read_freq(f"{a.cache}/freq/cs_full.txt"), read_freq(f"{a.cache}/freq/en_full.txt")
+    n_cs_sub, n_en_sub = sum(cs_sub.values()), sum(en_sub.values())   # Czech/English subtitles: noise filter only
+    auto_names, candidates = [], []
+    all_stripped = {strip_dia(w.lower()) for w in good}
+    for w, (cs, cb) in forms.items():
+        if valid.get(w) or w in block:
+            continue
+        if w != w.lower() and cs >= a.min_name and len(w) > 2:
+            auto_names.append((w, cs))
+        elif w == w.lower() and len(w) > 1 and strip_dia(w) not in all_stripped:
+            score = a.snc_weight * cs / n_snc + (1 - a.snc_weight) * cb / n_subs
+            foreign = max(cs_sub.get(w, 0) / n_cs_sub, en_sub.get(w, 0) / n_en_sub)
+            if (cs >= 3000 or cb >= 100) and score >= 4 * foreign:
+                candidates.append((w, cs, cb, score))
+    good |= {w for w, _ in auto_names}
 
-    def scale(c):
-        return max(1, min(240, 240 - round(math.log(top / c) / math.log(1.15))))
+    # --- 5: blended frequency -------------------------------------------------------------------------
+    def prob(w):
+        cs, cb = forms[w]
+        return a.snc_weight * cs / n_snc + (1 - a.snc_weight) * cb / n_subs
 
-    entries = {w: scale(c) for w, c in counts.items()}
+    probs = {w: prob(w) for w in good}
+    probs = {w: p for w, p in probs.items() if p > 0}
+    top = max(probs.values())
 
+    def scale(p):
+        return max(1, min(TOP_F, TOP_F - round(math.log(top / p) / STEP)))
+
+    entries = {w: scale(p) for w, p in probs.items()}
+
+    # --- 6: manual lists -------------------------------------------------------------------------------
     def manual(w, f, default):
         if f is not None:
             return f
         if w in entries:
             return entries[w]
-        c = sk.get(w.lower(), 0)
-        return scale(c) if c else default
+        lw = w.lower()
+        p = a.snc_weight * snc_total.get(lw, 0) / n_snc + (1 - a.snc_weight) * subs.get(lw, 0) / n_subs
+        return scale(p) if p > 0 else default
 
     for w, f in extra.items():
         entries[w] = manual(w, f, 120)
@@ -216,35 +293,101 @@ def main():
     for w in block:
         entries.pop(w, None)
 
+    # --- 7: bigrams --------------------------------------------------------------------------------------
+    bigrams = {}
+    ngram_path = f"{a.cache}/snc/2gramy.txt.bz2"
+    if not a.no_bigrams and os.path.exists(ngram_path):
+        bigrams = read_bigrams(ngram_path, entries, off, snc_total, a)
+
     out = os.path.join(a.out, "main_sk.combined")
+    n_bi = 0
     with open(out, "w", encoding="utf-8") as f:
-        f.write(f"dictionary=main:sk,locale=sk,description=Mäkčeň Slovak dictionary,date={int(time.time())},version=1\n")
+        f.write(f"dictionary=main:sk,locale=sk,description=Mäkčeň Slovak dictionary,date={int(time.time())},version=2\n")
         for w, fr in sorted(entries.items(), key=lambda x: (-x[1], x[0])):
             f.write(f" word={w},f={fr}" + (",possibly_offensive=true" if w in off else "") + "\n")
+            for w2, bf in bigrams.get(w, ()):
+                f.write(f"  bigram={w2},f={bf}\n")
+                n_bi += 1
 
     with open(os.path.join(a.out, "candidates.txt"), "w", encoding="utf-8") as f:
-        f.write("# Frequent forms Hunspell does not know. Copy the good ones to extra_words.txt.\n")
-        for w, c in sorted(unknown_kept, key=lambda x: -x[1]):
+        f.write("# Frequent lower-case forms Hunspell does not know: word, SNC count, subtitle count.\n# Copy the good ones to extra_words.txt.\n")
+        for w, cs, cb, _ in sorted(candidates, key=lambda x: -x[3]):
             if w not in entries:
-                f.write(f"{w}\t{c}\n")
+                f.write(f"{w}\t{cs}\t{cb}\n")
+    with open(os.path.join(a.out, "auto_names.txt"), "w", encoding="utf-8") as f:
+        f.write("# Proper nouns Hunspell does not know, added because they are frequent in SNC: word, SNC count.\n# Put unwanted ones into blocklist.txt.\n")
+        for w, c in sorted(auto_names, key=lambda x: -x[1]):
+            f.write(f"{w}\t{c}\n")
     with open(os.path.join(a.out, "dropped_plain_forms.txt"), "w", encoding="utf-8") as f:
-        f.write("# Valid words without diacritics dropped in favour of an accented twin: word, count, twin.\n")
-        for w, c, t in sorted(shadow_dropped, key=lambda x: -x[1]):
-            f.write(f"{w}\t{c}\t{t}\n")
+        f.write("# Valid words without diacritics dropped in favour of an accented twin:\n# word, SNC count, subtitle count, twin.\n")
+        for w, cs, cb, t in sorted(shadow_dropped, key=lambda x: -(x[1] + x[2])):
+            f.write(f"{w}\t{cs}\t{cb}\t{t}\n")
 
     report = {
         "entries": len(entries),
-        "hunspell_valid_forms": len(known),
+        "bigrams": n_bi,
+        "hunspell_valid_forms": len(good) - len(auto_names),
+        "auto_names": len(auto_names),
         "manual_words": len(extra) + len(offensive),
-        "candidates_for_review": len(unknown_kept),
+        "candidates_for_review": len(candidates),
         "plain_forms_dropped": len(shadow_dropped),
-        "sloppy_typing_rate": round(sloppy, 4),
         "plain_forms_deflated": deflated,
+        "sloppy_typing_rate_snc": round(rate_snc, 5),
+        "sloppy_typing_rate_subtitles": round(rate_subs, 5),
     }
     with open(os.path.join(a.out, "report.json"), "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=1)
-    print(json.dumps({k: v for k, v in report.items() if not k.startswith("top_")}, indent=1))
+    print(json.dumps(report, indent=1))
     print("wrote", out)
+
+
+def read_bigrams(path, entries, off, snc_total, a):
+    """SNC 2-grams ("count<TAB>w1<TAB>w2" or "count w1<TAB>w2") -> {w1: [(w2, f)]}."""
+    lower_entry = {}
+    for w in entries:
+        lw = w.lower()
+        if lw not in lower_entry or w == lw:
+            lower_entry[lw] = w
+
+    def entry(tok):
+        if tok in entries:
+            return tok
+        return lower_entry.get(tok.lower())
+
+    pairs = defaultdict(lambda: defaultdict(int))
+    t = time.time()
+    proc = subprocess.Popen(["bzcat", path], stdout=subprocess.PIPE)
+    n = 0
+    for raw in proc.stdout:
+        n += 1
+        if n % 20000000 == 0:
+            print(f"  2-grams: {n/1e6:.0f}M lines ({time.time()-t:.0f}s)", file=sys.stderr, flush=True)
+        p = raw.decode("utf-8", "replace").split()
+        if len(p) != 3 or not p[0].isdigit():
+            continue
+        c = int(p[0])
+        if c < a.min_bigram:
+            break   # the file is sorted by count, highest first
+        w1, w2 = entry(p[1]), entry(p[2])
+        if w1 and w2 and w2 not in off:
+            pairs[w1][w2] += c
+    proc.kill()
+    proc.wait()
+
+    # same log scale as unigrams, applied to P(w2 | w1)
+    top_f_word = max(entries, key=entries.get)
+    p_top = snc_total.get(top_f_word.lower(), 1) / sum(snc_total.values())
+    out = {}
+    for w1, nxt in pairs.items():
+        c1 = max(snc_total.get(w1.lower(), 0), sum(nxt.values()))
+        best = heapq.nlargest(a.bigrams_per_word, nxt.items(), key=lambda x: x[1])
+        lst = []
+        for w2, c in best:
+            f = TOP_F - round(math.log(p_top / (c / c1)) / STEP) if c / c1 < p_top else 255
+            f = max(entries[w2] + 1, min(255, f))
+            lst.append((w2, f))
+        out[w1] = lst
+    return out
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ Android keyboard for Slovak; a public GPL-3.0 fork of HeliBoard. Read `docs/makc
 - `docs/makcen/` – roadmap, build prompt, evaluation reports.
 
 ## Commands
-- Dictionary: `tools/makcen/fetch_sources.sh && python3 tools/makcen/build_dictionary.py && python3 tools/makcen/evaluate.py`
+- Dictionary (downloads ~700 MB on first run): `tools/makcen/fetch_sources.sh && python3 tools/makcen/build_dictionary.py && python3 tools/makcen/evaluate.py`
 - Compile: `java -jar tools/makcen/.cache/dicttool/dicttool_aosp.jar makedict -s tools/makcen/build/main_sk.combined -d app/src/main/assets/dicts/main_sk.dict`
 - App: `./gradlew assembleDebug` (needs the Android SDK and NDK; otherwise push and let the `Build debug APK` workflow do it)
 - Tests: `./gradlew testRunTestsUnitTest`

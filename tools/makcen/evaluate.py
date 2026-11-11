@@ -1,27 +1,41 @@
 #!/usr/bin/env python3
 """Measure the dictionary on the one job Mäkčeň must do well: typing without diacritics.
 
-This is a MODEL of the keyboard, not the real engine: a typed form that is itself a
-dictionary word is left alone; otherwise the highest-frequency dictionary word with the
-same letters (ignoring diacritics) wins. No sentence context is used, so the numbers show
-what the dictionary alone can do. Test words are the Hunspell-valid forms of the same
-subtitle corpus the dictionary was built from, weighted by how often they occur.
+This is a MODEL of the keyboard, not the real engine:
+  - a typed form that is itself a dictionary word is left alone;
+  - otherwise the highest-frequency dictionary word with the same letters (ignoring
+    diacritics) wins.
+Test words are the Hunspell-valid accented forms of the corpora the dictionary was built
+from, weighted by how often they occur - so this is not a held-out test.
+
+The "with word pairs" figure additionally lets the previous word decide, using the bigrams
+stored in the dictionary. It shows what the data could do; whether the real engine uses
+bigrams to override a typed valid word still has to be tested on a phone.
 
 Output: build/evaluation.md
 """
-import json, os, sys
+import json, os, subprocess
 from collections import defaultdict
-from build_dictionary import HERE, strip_dia, read_freq, WORD_RE
+from build_dictionary import HERE, strip_dia, read_freq, read_snc, WORD_RE, DIA
+
+
+def load_combined(path):
+    entries, bigrams, cur = {}, defaultdict(dict), None
+    with open(path, encoding="utf-8") as f:
+        next(f)
+        for line in f:
+            parts = dict(p.split("=", 1) for p in line.strip().split(","))
+            if "word" in parts:
+                cur = parts["word"]
+                entries[cur] = int(parts["f"])
+            elif "bigram" in parts:
+                bigrams[cur][parts["bigram"]] = int(parts["f"])
+    return entries, bigrams
 
 
 def main():
     cache, out = os.path.join(HERE, ".cache"), os.path.join(HERE, "build")
-    entries = {}
-    with open(f"{out}/main_sk.combined", encoding="utf-8") as f:
-        next(f)
-        for line in f:
-            parts = dict(p.split("=", 1) for p in line.strip().split(","))
-            entries[parts["word"]] = int(parts["f"])
+    entries, bigrams = load_combined(f"{out}/main_sk.combined")
     lower = defaultdict(int)
     for w, fr in entries.items():
         lower[w.lower()] = max(lower[w.lower()], fr)
@@ -29,49 +43,87 @@ def main():
     for w, fr in lower.items():
         by_stripped[strip_dia(w)].append((fr, w))
 
-    sk = {w: c for w, c in read_freq(f"{cache}/freq/sk_full.txt").items() if WORD_RE.match(w)}
-    valid = json.load(open(f"{cache}/validity.json", encoding="utf-8"))
-    total = sum(sk.values())
-    covered = sum(c for w, c in sk.items() if w in lower)
-    valid_mass = sum(c for w, c in sk.items() if valid.get(w))
+    subs = {w: c for w, c in read_freq(f"{cache}/freq/sk_full.txt").items() if WORD_RE.match(w)}
+    snc = {lw: sum(v.values()) for lw, v in read_snc(cache).items()}
+    valid = json.load(open(f"{cache}/validity2.json", encoding="utf-8"))
 
-    tested = right = blocked = missing = 0
-    losses = []
-    for w, c in sk.items():
-        if not valid.get(w) or strip_dia(w) == w:
-            continue
-        typed = strip_dia(w)
-        tested += c
-        if typed in lower:
-            blocked += c
-            losses.append((c, typed, w))
-            continue
+    def unigram_choice(typed):
+        if typed in entries:   # an upper-case twin (ANO) does not make lower-case "ano" a word
+            return typed
         cands = by_stripped.get(typed)
-        if not cands:
-            missing += c
-            continue
-        best = max(cands)[1]
-        if best == w:
-            right += c
-        else:
-            losses.append((c, f"{typed} → {best}", w))
-    losses.sort(reverse=True)
+        return max(cands)[1] if cands else None
+
+    rows, losses = [], defaultdict(float)
+    for name, counts in (("Written Slovak (SNC)", snc), ("Subtitles", subs)):
+        total = sum(counts.values())
+        covered = sum(c for w, c in counts.items() if w in lower)
+        tested = right = blocked = missing = 0
+        for w, c in counts.items():
+            if not valid.get(w) or not (DIA & set(w)):
+                continue
+            typed = strip_dia(w)
+            tested += c
+            got = unigram_choice(typed)
+            if got == w:
+                right += c
+            elif got is None:
+                missing += c
+            else:
+                if got == typed:
+                    blocked += c
+                losses[(typed if got == typed else f"{typed} → {got}", w)] += c / total
+        rows.append((name, covered / total, right / tested, blocked / tested,
+                     (tested - right - blocked - missing) / tested, missing / tested))
+
+    # --- word pairs: previous word + accent-free word ------------------------------------------------
+    pair_line = None
+    ngram = f"{cache}/snc/2gramy.txt.bz2"
+    if bigrams and os.path.exists(ngram):
+        lower_entry = {}
+        for w in entries:
+            if w.lower() not in lower_entry or w == w.lower():
+                lower_entry[w.lower()] = w
+        tested = right_uni = right_bi = 0
+        proc = subprocess.Popen(["bzcat", ngram], stdout=subprocess.PIPE)
+        for raw in proc.stdout:
+            p = raw.decode("utf-8", "replace").split()
+            if len(p) != 3 or not p[0].isdigit():
+                continue
+            c = int(p[0])
+            if c < 10:
+                break
+            w2 = p[2].lower()
+            if not valid.get(w2) or not (DIA & set(w2)) or not WORD_RE.match(p[1].lower()):
+                continue
+            typed = strip_dia(w2)
+            tested += c
+            uni = unigram_choice(typed)
+            right_uni += c * (uni == w2)
+            w1 = p[1] if p[1] in entries else lower_entry.get(p[1].lower())
+            nxt = bigrams.get(w1, {})
+            scored = [(nxt[e], e.lower()) for e in nxt if strip_dia(e.lower()) == typed]
+            right_bi += c * ((max(scored)[1] if scored else uni) == w2)
+        proc.kill()
+        pair_line = (tested, right_uni / tested, right_bi / tested)
 
     md = [
         "# Dictionary evaluation", "",
-        "Generated by `tools/makcen/evaluate.py`. A model of the keyboard, not the real engine – see the script header.", "",
-        f"- Dictionary entries: **{len(entries):,}**",
-        f"- Corpus tokens covered by the dictionary: **{covered / total:.1%}** (Hunspell-valid tokens in the corpus: {valid_mass / total:.1%})",
-        f"- Words with diacritics typed without them, restored correctly: **{right / tested:.1%}** of tokens",
-        f"  - not restored because the plain form is also a word (needs sentence context): {blocked / tested:.1%}",
-        f"  - restored to a different accented form: {(tested - right - blocked - missing) / tested:.1%}",
-        f"  - not in the dictionary: {missing / tested:.1%}", "",
-        "## Biggest losses", "",
-        "| Typed (→ result) | Wanted | Corpus count |", "|---|---|---|",
-    ] + [f"| {t} | {w} | {c:,} |" for c, t, w in losses[:60]]
+        "Generated by `tools/makcen/evaluate.py`. A model of the keyboard, not the real engine, and not a held-out test – see the script header.", "",
+        f"- Dictionary entries: **{len(entries):,}**, word pairs (bigrams): **{sum(len(v) for v in bigrams.values()):,}**", "",
+        "## Typing without diacritics, one word at a time", "",
+        "| Test text | Tokens covered by dictionary | Restored correctly | Plain form is also a word | Restored to another form | Not in dictionary |",
+        "|---|---|---|---|---|---|",
+    ] + [f"| {n} | {a:.1%} | **{b:.1%}** | {c:.1%} | {d:.1%} | {e:.1%} |" for n, a, b, c, d, e in rows]
+    if pair_line:
+        md += ["", "## With the previous word (SNC word pairs)", "",
+               f"- Accented words restored correctly, word list only: {pair_line[1]:.1%}",
+               f"- If the engine lets stored word pairs decide: **{pair_line[2]:.1%}**"]
+    md += ["", "## Biggest losses (share of all tokens, per source)", "",
+           "| Typed (→ result) | Wanted | Share |", "|---|---|---|"]
+    md += [f"| {t} | {w} | {s:.3%} |" for (t, w), s in sorted(losses.items(), key=lambda x: -x[1])[:60]]
     with open(f"{out}/evaluation.md", "w", encoding="utf-8") as f:
         f.write("\n".join(md) + "\n")
-    print("\n".join(md[:12]))
+    print("\n".join(md[:18]))
 
 
 if __name__ == "__main__":

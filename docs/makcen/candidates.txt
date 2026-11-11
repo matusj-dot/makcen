@@ -1,711 +1,238 @@
-# Frequent forms Hunspell does not know. Copy the good ones to extra_words.txt.
-gibbs	3623
-nieje	3090
-ib	1579
-frasier	1334
-niles	1311
-merlin	1295
-beckettová	1152
-roz	929
-labáku	917
-kôli	856
-artuš	844
-niesom	838
-cass	803
-atlantis	790
-dusanho	735
-sukin	712
-sheppard	693
-kľude	675
-gaius	671
-walden	582
-dunhamová	567
-odomňa	560
-jamesa	540
-ori	521
-garibaldi	479
-veky	476
-namuras	465
-nazdravie	462
-bratu	447
-gabriella	445
-delennová	444
-abbs	440
-vporiadku	438
-teyla	411
-seong	406
-lyndsey	391
-ojai	390
-fisherová	390
-mô	385
-wraithi	372
-wonov	370
-castiel	365
-wook	364
-herrmann	354
-margie	352
-nachvíľu	345
-seon	339
-alo	338
-ronon	331
-niesi	315
-bazéna	306
-charlesa	306
-pokašľal	302
-larelay	302
-chae	301
-severide	299
-brooklyne	299
-wraithov	292
-shim	290
-zpm	288
-birkoff	281
-michaelom	281
-príliž	274
-pome	274
-jackom	268
-roo	264
-thomasa	264
-zasran	264
-mouch	263
-manhattane	256
-hardison	254
-mma	253
-dik	252
-fajčíš	249
-somnou	245
-voight	244
-londo	240
-chrochtanie	239
-kua	237
-maxa	234
-sadako	234
-tácov	231
-eng	229
-seattli	228
-dalekovia	225
-shrek	225
-krkom	223
-gibbsa	221
-niake	221
-sylar	220
-chrisa	215
-klobúky	211
-singham	207
-lennier	206
-mariňákov	206
-kamo	202
-pozrimeže	201
-iel	201
-dib	201
-effy	200
-ukludni	199
-niaky	197
-cylonov	193
-poth	193
-teploš	192
-shaz	192
-shik	192
-týto	191
-artuša	191
-poveda	190
-krny	188
-narodky	186
-broyles	186
-ryanom	184
-linc	184
-lajci	184
-antici	182
-eui	181
-gej	180
-raya	180
-mollari	178
-jonesa	177
-gayovia	177
-etko	176
-joeom	174
-frobisher	174
-petrelli	174
-alina	173
-nechem	173
-corleone	169
-randenie	169
-vovnútri	169
-prúser	168
-jeju	167
-díki	167
-metatron	166
-tvrďas	165
-daidalos	165
-winn	165
-klobúku	164
-jaya	163
-phryne	163
-waw	163
-woz	163
-gook	162
-woong	162
-bozaj	161
-margene	160
-klingáč	159
-hallgrim	159
-sekirei	159
-lukom	158
-ojeb	158
-prídite	155
-benom	155
-mo-kei	155
-kóreje	154
-haeshin	154
-dámi	154
-doláčov	153
-minbari	152
-antikov	151
-feky	151
-pojebať	151
-rangeri	151
-predomnou	151
-abaddon	151
-ňho	151
-beckettovej	151
-nieee	150
-dosta	150
-posrať	150
-jamesom	150
-zathras	149
-posratú	147
-predu	146
-parkman	145
-fajčím	144
-foter	143
-davom	143
-pavúka	142
-kecov	142
-ianto	141
-mirinkat	141
-doreau	141
-gervais	141
-pojebaná	140
-bolly	140
-šmolinka	140
-kukatel	140
-zasrane	140
-kľudná	140
-niesme	139
-pavúky	138
-pokašľala	138
-chewie	138
-paranoidná	137
-omrknúť	137
-boog	137
-ferg	137
-dopriať	136
-klobúkom	136
-poserie	136
-harvarde	136
-zander	135
-josha	135
-krvy	135
-gir	134
-gaeta	134
-morpheus	133
-kansase	131
-chuckom	131
-skurvysyna	130
-onslow	130
-hallam	130
-prekvapko	130
-naoki	130
-dalekov	130
-nickom	130
-motívy	129
-trtkať	129
-pojebal	127
-replikátorov	127
-dearing	127
-davisa	127
-telepatov	127
-pilkington	126
-rossa	126
-džefo	126
-hermiona	126
-iib	124
-detroite	124
-capp	124
-roya	124
-posratá	123
-federálov	123
-mcdeere	122
-niaku	122
-laine	121
-červia	121
-kevinom	121
-pollo	121
-guličky	120
-lyta	120
-jebnutý	119
-pavúkov	119
-reiden	119
-nfo	118
-myong	118
-bezomňa	117
-sms-ku	117
-onn	117
-gae	117
-mclane	117
-preživší	117
-storybrookeu	117
-bjarne	117
-zasraté	116
-majland	116
-amberle	115
-zombíkov	115
-pokašlal	114
-queense	114
-elvisa	114
-emzáci	114
-shepparda	113
-fornell	113
-maxom	113
-carlosa	112
-týpkov	112
-marcusa	112
-vyjebanci	112
-keci	112
-etci	112
-galan	111
-klud	111
-linderman	111
-milliónov	110
-mohinder	110
-traslated	110
-x-treme	110
-milesa	110
-rangerov	109
-tevye	109
-jun-shik	109
-ryuzaki	109
-bebeatka	108
-chapo	108
-niee	108
-pojebanú	108
-jaffov	108
-klobúka	108
-clausa	108
-drísty	108
-mccallister	108
-winchesterovci	107
-dallase	107
-ericom	107
-niekdo	107
-rómeo	107
-bronxe	107
-veľmy	106
-nesrandujem	106
-svatbe	106
-ajtak	106
-mitcha	106
-sarinka	105
-hackol	105
-rashad	105
-akoto	105
-pojebte	104
-etmare	104
-walterom	103
-serieš	103
-espo	103
-zhúlený	103
-wraithom	103
-rukia	103
-zelenka	103
-chula	103
-ncissg	102
-mattom	102
-akokeby	102
-ji-eun	102
-sheridana	102
-bindajs	101
-odvedľa	101
-antidepresíva	101
-vyjebať	101
-posranú	101
-hagrid	101
-denveri	100
-rra	100
-prevelený	100
-genii	100
-dennisa	100
-ďíki	99
-edas	99
-replikátori	99
-williamom	99
-bianchiho	99
-pŕŕŕ	99
-williamsa	98
-hacknúť	98
-natom	98
-červiu	98
-avni	97
-vyjebané	97
-castla	97
-intráku	97
-uau	97
-tylerom	96
-yellowknife	96
-cintorína	96
-sfetovaný	96
-sukyn	95
-čoko	95
-oliviu	95
-nasratá	95
-jeguk	95
-sindibád	95
-skurvy	94
-boong	94
-jasonom	94
-lewisa	94
-kisha	94
-zioly	94
-mutantov	94
-marylande	94
-vyhláskovať	94
-emrys	94
-zdravas	93
-maťo	93
-cigu	93
-igby	93
-seanom	93
-nanami	93
-silasa	92
-wraithmi	92
-odvykačke	92
-strápniť	92
-melmotte	92
-týpkom	91
-dojebal	91
-epifanio	91
-roslin	91
-francisa	91
-tínedžeri	91
-serú	91
-vyčúrať	90
-krod	90
-xenia	90
-marmaduke	90
-catco	90
-federálom	90
-deanom	89
-ukľudní	89
-parsa	89
-ruzek	89
-tzeitel	89
-marleyho	89
-lauda	89
-mikeom	89
-frandsen	89
-rýchlovka	89
-cfd	89
-cuddyovej	88
-thiago	88
-jebal	88
-narade	87
-ishaan	87
-iclip	87
-stacee	87
-inha	87
-lucasa	87
-tabaku	86
-travisa	86
-janakulka	86
-raees	86
-navigovať	86
-dinozza	86
-spä	86
-nápovedu	85
-willom	85
-renautas	85
-kenai	85
-preživších	84
-policajtkou	84
-jimom	84
-fúha	84
-thule	84
-bratček	84
-vierozvestec	83
-dawsnová	83
-jebo	83
-barbieho	83
-debilko	83
-ošukať	83
-moľno	83
-harrisa	83
-cpd	83
-wisconsine	82
-minbariovia	82
-indiane	82
-pičoviny	82
-goryeo	82
-belldandy	82
-navorski	82
-štikút	82
-gerri	82
-kosh	82
-nighthorse	81
-kreditiek	81
-poserieš	81
-chrisom	80
-kludne	80
-federálmi	80
-frasiera	80
-bullwinkle	80
-suxar	80
-šekom	80
-ila	80
-padres	80
-reštike	80
-gregom	80
-ževraj	79
-schodami	79
-gitty	79
-jumpera	79
-patrickom	79
-blázonko	79
-jeffom	79
-damonom	79
-doporiadku	79
-narnov	79
-sms-ky	78
-pičovina	78
-phoenixe	78
-skitteri	78
-kokso	78
-estela	78
-mikaela	78
-vidie	78
-čakujem	78
-mon-el	78
-justinom	78
-brianom	77
-qasim	77
-bester	77
-honoria	77
-divov	77
-chaok	77
-rayom	77
-hamburgu	77
-nabudúci	77
-reddevil	77
-haewon	76
-zarek	76
-javy	76
-príjmam	76
-cvokár	76
-marlott	75
-wenger	75
-fasa	75
-kurve	75
-jednorožca	75
-omnis	75
-mong-ryong	75
-tenco	75
-spiaci	75
-naserie	75
-jakeom	75
-hovnom	75
-scottom	74
-jediovia	74
-beckettovú	74
-kľudu	74
-iowe	74
-posratej	74
-jaffovia	74
-stevom	73
-morrisa	73
-cylonmi	73
-zmrdov	73
-idgie	73
-young-jae	73
-lancea	73
-bodnar	73
-bickman	73
-vodičáku	73
-treville	72
-gaiusa	72
-telepati	72
-vnútry	72
-mariňákom	72
-marisou	72
-armino	72
-ikuko	72
-dalpo	71
-zasratá	71
-barbare	71
-maroskolcak	71
-clarkom	71
-kynaston	71
-papierovačiek	71
-uriel	71
-collinsa	71
-doublejo	71
-kľudom	71
-eero	71
-fujii	71
-vorenus	71
-gibbsom	71
-minato-san	71
-tedom	70
-vyhoniť	70
-rickom	70
-laptope	70
-gusa	70
-jessa	70
-baltara	70
-posratého	70
-denníček	70
-radek	70
-uldov	70
-juchú	70
-zoberem	70
-fei-hong	70
-klimt	70
-sylara	69
-kamui	69
-odjeb	69
-housa	69
-guya	69
-karči	69
-koba	69
-šmolko	69
-bolča	69
-haesung	68
-jessan	68
-shirono	68
-ikarus	68
-kecami	68
-housea	68
-jurek	68
-connecticute	68
-aarohi	68
-mckaya	68
-nadhadzovač	68
-jediov	68
-prepadák	68
-frobishera	68
-dunnison	67
-sharpay	67
-ashikabi	67
-chrno	67
-eph	67
-vysledovať	67
-kacl	67
-kensei	67
-niako	67
-fantóma	67
-waj	66
-pálkar	66
-vpohode	66
-timon	66
-narni	66
-odkráčať	66
-zasranom	66
-dariela	66
-marisu	66
-krrish	66
-prevlek	66
-božinku	66
-wooka	65
-droidov	65
-kráľovny	65
-charlesom	65
-yoss	65
-reacher	65
-reštiky	65
-spovedníčka	65
-zeelandu	65
-vyjebaná	65
-serafino	65
-lampert	65
-ingvar	65
-baróna	65
-matejj	65
-ayan	65
-aaccff	65
-saffy	65
-emzák	65
-bracho	64
-kaulder	64
-kjeii	64
-posadnutie	64
-kleitos	64
-plížiť	64
-chochi	64
-zeeland	64
-hyperpriestore	64
-nabúchal	64
-cadi	64
-gatesa	64
-všetcia	63
-karlom	63
-kasting	63
-marcusom	63
-posratých	63
-okarin	63
-tangey	63
-hakis	63
-ukľudnil	63
-shizuku	63
-opakom	63
-hovne	63
-španieli	63
-drahúšik	63
-sheridanovi	63
-retkvi	62
-segra	62
-katey	62
-pojebaných	62
-seonga	62
-joshom	62
-rizvan	62
-nonnatus	62
-ľavoboku	62
-maeri	62
-manhattanskej	62
-skander	62
-odrovnať	62
-yuanu	62
-kilian	62
-somm	62
-elfovia	62
-srandujete	61
-dewittová	61
-afghanistane	61
-ksyusha	61
-kilov	61
-kirito-kun	61
-joeya	61
-spiaca	61
-henrickson	61
-kazehaya	61
-gwaine	61
-zničohonič	61
-strápnil	61
-speť	61
-loreen	61
-musubi-chan	61
-carter-ová	61
-benford	61
-loajálny	61
-dežo	61
-reynoldsa	60
-anatolij	60
-ameliu	60
-jui	60
-dotykom	60
-drakula	60
-morningstar	60
-jow	60
-fncourier	60
-padákom	60
-demetria	60
-kokotom	60
-toula	60
+# Frequent lower-case forms Hunspell does not know: word, SNC count, subtitle count.
+# Copy the good ones to extra_words.txt.
+nieje	3359	3090
+nbsp	32235	0
+labáku	436	917
+kôli	432	856
+motívy	21547	129
+niesom	512	838
+kw	21565	34
+dusanho	0	735
+sukin	538	712
+veky	7262	476
+kľude	1021	675
+apr	20281	0
+gólman	20011	0
+odomňa	398	560
+cintorína	13478	96
+javov	14598	48
+bazéna	6942	306
+yacute	15285	0
+krídelník	13604	4
+nazdravie	98	462
+namuras	0	465
+twitteri	10066	114
+bratu	288	447
+delennová	0	444
+vporiadku	95	438
+sn	12584	6
+gólmana	12440	1
+sudoku	11472	23
+wonov	740	370
+javom	10560	16
+nachvíľu	877	345
+wraithi	0	372
+tabaku	8306	86
+dopriať	6715	136
+krkom	4111	223
+dotyky	8081	60
+klobúky	3553	211
+niesi	102	315
+pokašľal	155	302
+davom	4748	143
+wraithov	0	292
+klobúku	3650	164
+pome	298	274
+zasran	537	264
+pavúka	4030	142
+príliž	115	274
+dik	739	252
+klobúkom	3747	136
+kancelárka	7320	13
+mouch	4	263
+fajčíš	392	249
+kumite	7585	0
+odevu	6384	40
+tukov	6417	33
+somnou	221	245
+kua	395	237
+chrochtanie	47	239
+klobúka	3857	108
+pozrimeže	1108	201
+eurovalu	6860	0
+tácov	110	231
+covidu	6835	0
+opakom	4837	63
+iva	6336	6
+niake	50	221
+gej	910	180
+mariňákov	130	206
+pavúky	2100	138
+singham	0	207
+iel	150	201
+lennier	0	206
+dib	60	201
+fotogaléria	5825	2
+lukom	1247	158
+poveda	285	190
+ukludni	11	199
+teploš	210	192
+puku	5566	8
+euroval	5797	0
+niaky	47	197
+narodky	279	186
+tínedžeri	3036	91
+aus	5256	13
+týto	67	191
+dotykom	3881	60
+prúser	718	168
+zateplenie	5547	2
+gayovia	447	177
+salóna	4612	34
+medzimesačne	5592	0
+vovnútri	515	169
+lajci	2	184
+etko	195	176
+doprial	3923	46
+randenie	307	169
+fajčím	962	144
+nechem	75	173
+dvojgólový	5032	1
+tvrďas	200	165
+rozstrele	4850	5
+brexit	4910	1
+pavúkov	1436	119
+waw	137	163
+díki	18	167
+prídite	348	155
+bozaj	147	161
+foter	653	143
+prime-time	4650	5
+predomnou	333	151
+nickom	938	130
+koordinátorka	4160	18
+sekirei	0	159
+nieee	261	150
+rangeri	227	151
+ojeb	23	158
+dosta	236	150
+znevýhodnených	4499	3
+ňho	143	151
+posrať	163	150
+mo-kei	0	155
+dámi	16	154
+doláčov	43	153
+haeshin	0	154
+futsal	4445	0
+pojebať	43	151
+posratú	130	147
+predu	158	146
+antikov	1	151
+jm	3823	18
+paranoidná	338	137
+guličky	821	120
+veľkoklubu	4310	0
+kecov	108	142
+kľudná	152	140
+ukazovákom	3923	8
+niesme	85	139
+výjavy	3832	10
+omrknúť	128	137
+mirinkat	0	141
+zasrane	23	140
+pokašľala	68	138
+kukatel	0	140
+poserie	110	136
+prievidzského	4044	0
+renkingu	4006	0
+krvy	58	135
+cyklotrasy	3950	1
+antidepresíva	1030	101
+prekvapko	175	130
+faulovaný	3862	3
+developeri	3503	14
+eb	3727	6
+akokeby	926	102
+spolufinancovanie	3889	0
+trtkať	129	129
+brexitu	3837	0
+skurvysyna	29	130
+preživší	387	117
+kontumuje	3793	0
+telepatov	53	127
+pojebal	38	127
+líderka	3353	13
+slovaca	3721	0
+dojazd	3188	18
+replikátorov	10	127
+posratá	125	123
+sms-ku	298	117
+džefo	4	126
+webstránke	3178	17
+federálov	85	123
+dvadsaťpäťročný	3656	0
+hokejbal	3569	2
+drísty	473	108
+zombíkov	259	115
+niaku	18	122
+červia	44	121
+nedoprial	3096	16
+covidom	3534	0
+jebnutý	62	119
+majland	148	116
+eparchie	3509	0
+týpkov	223	112
+whatsapp	3365	4
+odvedľa	532	101
+nfo	21	118
+ných	3195	9
+bezomňa	47	117
+zasraté	60	116
+gazeta	3429	0
+dvadsaťtriročný	3418	0
+onn	4	117
+florbal	3410	0
+storybrookeu	0	117
+pokašlal	60	114
+dvadsaťštyriročný	3380	0
+rangerov	177	109
+etci	51	112
+klud	50	111
+vyjebanci	19	112
+milliónov	30	110
+brexite	3233	0
+niekdo	101	107
+krídelníka	3120	3
+traslated	0	110
+niee	42	108
+prílevu	3149	1
+tevye	0	109
+jun-shik	0	109
+dvadsaťosemročný	3174	0
+rodovo	3108	2
+pojebanú	10	108
+ajtak	68	106
+bebeatka	0	108
+jaffov	0	108
+svatbe	49	106
+hackol	62	105
+nesrandujem	28	106
+prevelený	198	100
+akoto	47	105
+veľmy	16	106
+serieš	100	103
+prievidzskom	3098	0
+osemnásťročný	3061	1
+dvojgólového	3054	0
+kadetky	3053	0
+zhúlený	48	103
+pojebte	11	104
+etmare	0	104
+parlamentých	3030	0
+dvojgólové	3016	0
+wraithom	0	103
+posranú	46	101
+vyjebať	32	101
+ncissg	0	102
+ji-eun	0	102
+bindajs	0	101
