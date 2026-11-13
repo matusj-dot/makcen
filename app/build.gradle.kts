@@ -13,8 +13,8 @@ android {
         applicationId = "sk.makcen.keyboard" // code namespace stays helium314.keyboard to keep merges from HeliBoard easy
         minSdk = 21
         targetSdk = 37
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
         ndk {
             abiFilters.clear()
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
