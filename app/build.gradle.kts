@@ -13,8 +13,8 @@ android {
         applicationId = "sk.makcen.keyboard" // code namespace stays helium314.keyboard to keep merges from HeliBoard easy
         minSdk = 21
         targetSdk = 37
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.2.2"
         ndk {
             abiFilters.clear()
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
@@ -22,6 +22,16 @@ android {
         proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
 
+    // Mäkčeň: debug builds are signed with a fixed key kept in the repo, so that every new
+    // build from CI installs over the previous one. It is a debug key, not a secret.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("makcen-debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = true
