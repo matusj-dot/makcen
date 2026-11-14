@@ -22,6 +22,9 @@
 7. **Own identity.** App icon, store texts in `fastlane/`, release signing, F-Droid.
 8. **Layout.** Decide on QWERTY vs QWERTZ default and whether a diacritics row helps.
 
+## Experiment: context model
+A small GPT-2-style language model that re-ranks dictionary candidates using the sentence so far. Prototype scripts are in `tools/makcen/lm/` (see its README). Decision rule: it goes into the keyboard only if it clearly beats the dictionary on held-out sentences, and then only if it is fast enough on a phone.
+
 ## Principles
 - Never "correct" a valid Slovak word.
 - A missing diacritic is not a typo; restoring it must be cheap.
