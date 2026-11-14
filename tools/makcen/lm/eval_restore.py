@@ -33,8 +33,7 @@ def load_dictionary(path):
         with gzip.open(path, "rt", encoding="utf-8") as f:
             for line in f:
                 w, fr = line.rstrip("\n").split("\t")
-                if w == w.lower():
-                    freq[w] = int(fr)
+                freq[w] = int(fr)
     else:                           # a freshly built build/main_sk.combined
         with open(path, encoding="utf-8") as f:
             next(f)
@@ -42,12 +41,10 @@ def load_dictionary(path):
                 line = line.strip()
                 if line.startswith("word="):
                     p = dict(x.split("=", 1) for x in line.split(","))
-                    w = p["word"]
-                    if w == w.lower():
-                        freq[w] = int(p["f"])
+                    freq[p["word"]] = int(p["f"])
     by = {}
     for w, fr in freq.items():
-        by.setdefault(strip_dia(w), []).append(w)
+        by.setdefault(strip_dia(w).lower(), []).append(w)
     return freq, by
 
 
@@ -101,24 +98,31 @@ def main():
                 typed = strip_dia(gold)
                 out += s[pos:m.start()]
                 pos = m.end()
-                cands = by.get(typed.lower(), [])
-                if typed.lower() in freq and typed.lower() not in cands:
-                    cands = cands + [typed.lower()]
-                if gold.lower() not in cands and gold != typed:
+                # candidate spellings and their dictionary frequency. Names (Bytča, Čína) are stored
+                # capitalised and only apply when the typed word is capitalised too.
+                cf = {}
+                for e in by.get(typed.lower(), []):
+                    if e == e.lower():
+                        surface = recase(e, typed)
+                    elif typed[0].isupper():
+                        surface = e.upper() if typed.isupper() and len(typed) > 1 else e
+                    else:
+                        continue
+                    cf[surface] = max(cf.get(surface, 0), freq[e])
+                cands = list(cf)
+                if gold not in cf and gold != typed:
                     unreachable += 1     # the wanted word is not in the dictionary at all
                 if not cands:
                     d_choice = m_choice = typed
                 else:
-                    d = typed.lower() if typed.lower() in freq else max(cands, key=freq.get)
-                    d_choice = recase(d, typed)
+                    d_choice = typed if typed in cf else max(cands, key=cf.get)
                     if len(cands) == 1:
-                        m_choice = recase(cands[0], typed)
+                        m_choice = cands[0]
                     else:
                         tail = " ".join(out.split()[-40:])
                         glue = "" if not out or out.endswith(tuple("(„\"-–")) else " "
-                        sc = lm_scores(tail + glue, [recase(c, typed) for c in cands])
-                        best = max(range(len(cands)), key=lambda i: sc[i] + weight * LN_STEP * freq[cands[i]])
-                        m_choice = recase(cands[best], typed)
+                        sc = lm_scores(tail + glue, cands)
+                        m_choice = cands[max(range(len(cands)), key=lambda i: sc[i] + weight * LN_STEP * cf[cands[i]])]
                 out += m_choice
                 kind = "accented" if gold != typed else "plain"
                 stats[kind][0] += 1
