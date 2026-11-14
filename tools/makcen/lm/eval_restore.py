@@ -8,6 +8,10 @@ diacritics (from build/main_sk.combined), so the model can only choose real word
 
   dictionary   a typed form that is itself a word stays; otherwise the most frequent candidate
   model        the candidate that the language model finds most likely after the words so far
+  model + dictionary frequency   the same, with the word's general frequency added in
+
+Also reported: how many wanted words are missing from the dictionary altogether - no method
+that only chooses among dictionary words can get those right.
 
 Reported: accuracy on words that need diacritics, on words that must stay plain (a model
 that adds accents everywhere would fail here), and on both together.
@@ -18,6 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 from build_dictionary import strip_dia, HERE as TOOLS
 from common import DATA, EOT, load_model, load_tokenizer
 
+LN_STEP = 0.1398   # ln(1.15): one dictionary frequency unit is a factor of 1.15 in probability
 WORD = re.compile(r"[A-Za-záäčďéíĺľňóôŕšťúýžÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ]+")
 
 
@@ -58,6 +63,7 @@ def main():
     built = os.path.join(TOOLS, "build", "main_sk.combined")
     ap.add_argument("--dictionary", default=built if os.path.exists(built) else os.path.join(TOOLS, "lm", "wordlist.tsv.gz"))
     ap.add_argument("--data", default=DATA)
+    ap.add_argument("--weight", type=float, help="weight of the dictionary frequency next to the model; default: tuned on 300 extra sentences")
     ap.add_argument("--show", type=int, default=15, help="print this many sentences the model got wrong")
     a = ap.parse_args()
 
@@ -66,60 +72,88 @@ def main():
     model, ck = load_model(os.path.join(a.data, "model.pt"))
     ctx = model.cfg["ctx"]
     with open(os.path.join(a.data, "test_sentences.txt"), encoding="utf-8") as f:
-        sents = [l.strip() for l in f if l.strip()][:a.sentences]
+        all_sents = [l.strip() for l in f if l.strip()]
+    sents = all_sents[:a.sentences]
+
+    eot = tok.token_to_id(EOT)
+    cache = {}
 
     @torch.no_grad()
-    def pick(prefix, cands):
-        """Candidate whose sentence-so-far the model finds most likely."""
-        encs = [tok.encode(prefix + c).ids[-(ctx - 1):] for c in cands]
-        n = max(len(e) for e in encs)
-        eot = tok.token_to_id(EOT)
-        x = torch.tensor([[eot] + e + [0] * (n - len(e)) for e in encs])
-        logp = torch.log_softmax(model(x[:, :-1]), -1).gather(2, x[:, 1:, None])[..., 0]
-        scores = [logp[i, :len(e)].sum().item() for i, e in enumerate(encs)]
-        return cands[max(range(len(cands)), key=scores.__getitem__)]
+    def lm_scores(prefix, cands):
+        """How likely the model finds the sentence so far, ending in each candidate."""
+        key = (prefix, tuple(cands))
+        if key not in cache:
+            encs = [tok.encode(prefix + c).ids[-(ctx - 1):] for c in cands]
+            n = max(len(e) for e in encs)
+            x = torch.tensor([[eot] + e + [0] * (n - len(e)) for e in encs])
+            logp = torch.log_softmax(model(x[:, :-1]), -1).gather(2, x[:, 1:, None])[..., 0]
+            cache[key] = [logp[i, :len(e)].sum().item() for i, e in enumerate(encs)]
+        return cache[key]
 
-    stats = {k: [0, 0, 0] for k in ("accented", "plain")}   # total, dictionary right, model right
-    wrong = []
-    for s in sents:
-        out_model, pos, bad = "", 0, False
-        for m in WORD.finditer(s):
-            gold = m.group()
-            typed = strip_dia(gold)
-            out_model += s[pos:m.start()]
-            pos = m.end()
-            cands = by.get(typed.lower(), [])
-            if len(cands) == 0:
-                out_model += typed      # unknown to the dictionary: nobody can restore it
-                d_choice = m_choice = typed
-            else:
-                d = typed.lower() if typed.lower() in freq else max(cands, key=freq.get)
-                d_choice = recase(d, typed)
-                if len(cands) == 1 and typed.lower() not in freq:
-                    m_choice = d_choice
+    def run(sentences, weight):
+        """weight: how much the dictionary frequency counts next to the model (0 = model alone)."""
+        stats = {k: [0, 0, 0] for k in ("accented", "plain")}   # total, dictionary right, model right
+        wrong, unreachable = [], 0
+        for s in sentences:
+            out, pos, bad = "", 0, False
+            for m in WORD.finditer(s):
+                gold = m.group()
+                typed = strip_dia(gold)
+                out += s[pos:m.start()]
+                pos = m.end()
+                cands = by.get(typed.lower(), [])
+                if typed.lower() in freq and typed.lower() not in cands:
+                    cands = cands + [typed.lower()]
+                if gold.lower() not in cands and gold != typed:
+                    unreachable += 1     # the wanted word is not in the dictionary at all
+                if not cands:
+                    d_choice = m_choice = typed
                 else:
-                    tail = " ".join(out_model.split()[-40:])
-                    glue = "" if out_model.endswith(tuple("(„\"-–")) or not out_model else " "
-                    prefix = tail + glue if not out_model.endswith(" ") else tail + " "
-                    m_choice = pick(prefix, [recase(c, typed) for c in cands])
-                out_model += m_choice
-            kind = "accented" if gold != typed else "plain"
-            stats[kind][0] += 1
-            stats[kind][1] += d_choice == gold
-            stats[kind][2] += m_choice == gold
-            bad |= m_choice != gold
-        out_model += s[pos:]
-        if bad:
-            wrong.append((s, out_model))
+                    d = typed.lower() if typed.lower() in freq else max(cands, key=freq.get)
+                    d_choice = recase(d, typed)
+                    if len(cands) == 1:
+                        m_choice = recase(cands[0], typed)
+                    else:
+                        tail = " ".join(out.split()[-40:])
+                        glue = "" if not out or out.endswith(tuple("(„\"-–")) else " "
+                        sc = lm_scores(tail + glue, [recase(c, typed) for c in cands])
+                        best = max(range(len(cands)), key=lambda i: sc[i] + weight * LN_STEP * freq[cands[i]])
+                        m_choice = recase(cands[best], typed)
+                out += m_choice
+                kind = "accented" if gold != typed else "plain"
+                stats[kind][0] += 1
+                stats[kind][1] += d_choice == gold
+                stats[kind][2] += m_choice == gold
+                bad |= m_choice != gold
+            out += s[pos:]
+            if bad:
+                wrong.append((s, out))
+        return stats, wrong, unreachable
+
+    def acc(stats):
+        return sum(v[2] for v in stats.values()) / max(1, sum(v[0] for v in stats.values()))
+
+    # choose how much weight the dictionary frequency gets, on sentences that are NOT in the test
+    weight = a.weight
+    if weight is None:
+        dev = all_sents[a.sentences:a.sentences + 300]
+        weight = max((0.0, 0.25, 0.5, 1.0, 2.0), key=lambda w: acc(run(dev, w)[0])) if len(dev) >= 50 else 0.0
 
     print(f"model trained {ck.get('hours_done', 0):.1f} h, {len(sents)} held-out sentences\n")
-    print(f"{'':28}{'words':>8}{'dictionary':>12}{'model':>9}")
-    tot = [sum(stats[k][i] for k in stats) for i in range(3)]
-    for name, (n, d, mm) in (("words needing diacritics", stats["accented"]), ("words that stay plain", stats["plain"]), ("all words", tot)):
-        print(f"{name:28}{n:8d}{d/max(n,1):12.1%}{mm/max(n,1):9.1%}")
-    print(f"\nsentences fully correct with the model: {1 - len(wrong)/len(sents):.1%}")
-    for s, o in wrong[:a.show]:
-        print("\n  wanted:", s, "\n  model: ", o)
+    results = [("model alone", run(sents, 0.0))]
+    if weight:
+        results.append((f"model + dictionary frequency (weight {weight})", run(sents, weight)))
+    for title, (stats, wrong, unreachable) in results:
+        print(f"--- {title}")
+        print(f"{'':28}{'words':>8}{'dictionary':>12}{'model':>9}")
+        tot = [sum(stats[k][i] for k in stats) for i in range(3)]
+        for name, (n, d, mm) in (("words needing diacritics", stats["accented"]), ("words that stay plain", stats["plain"]), ("all words", tot)):
+            print(f"{name:28}{n:8d}{d/max(n,1):12.1%}{mm/max(n,1):9.1%}")
+        print(f"sentences fully correct: {1 - len(wrong)/len(sents):.1%}\n")
+    n_acc = stats["accented"][0]
+    print(f"accented words missing from the dictionary (nothing can restore them): {unreachable} = {unreachable/max(n_acc,1):.1%} of words needing diacritics")
+    for s_, o in wrong[:a.show]:
+        print("\n  wanted:", s_, "\n  model: ", o)
 
 
 if __name__ == "__main__":
