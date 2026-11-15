@@ -48,6 +48,19 @@ def load_dictionary(path):
     return freq, by
 
 
+def read_text_file(path):
+    """Lines of a text or .srt file as test sentences; subtitle numbers, timings and tags are dropped."""
+    out = []
+    with open(path, encoding="utf-8-sig", errors="replace") as f:
+        for line in f:
+            line = re.sub(r"<[^>]+>|\{[^}]+\}", "", line).strip().lstrip("-– ").strip()
+            if not line or line.isdigit() or "-->" in line:
+                continue
+            if len(WORD.findall(line)) >= 3:
+                out.append(line)
+    return out
+
+
 def recase(word, like):
     if like.isupper() and len(like) > 1:
         return word.upper()
@@ -60,6 +73,7 @@ def main():
     built = os.path.join(TOOLS, "build", "main_sk.combined")
     ap.add_argument("--dictionary", default=built if os.path.exists(built) else os.path.join(TOOLS, "lm", "wordlist.tsv.gz"))
     ap.add_argument("--data", default=DATA)
+    ap.add_argument("--test-file", help="test on your own text instead of Wikipedia: a plain-text or .srt subtitle file with correct diacritics")
     ap.add_argument("--weight", type=float, help="weight of the dictionary frequency next to the model; default: tuned on 300 extra sentences")
     ap.add_argument("--show", type=int, default=15, help="print this many sentences the model got wrong")
     a = ap.parse_args()
@@ -68,8 +82,11 @@ def main():
     tok = load_tokenizer(a.data)
     model, ck = load_model(os.path.join(a.data, "model.pt"))
     ctx = model.cfg["ctx"]
-    with open(os.path.join(a.data, "test_sentences.txt"), encoding="utf-8") as f:
-        all_sents = [l.strip() for l in f if l.strip()]
+    if a.test_file:
+        all_sents = read_text_file(a.test_file)
+    else:
+        with open(os.path.join(a.data, "test_sentences.txt"), encoding="utf-8") as f:
+            all_sents = [l.strip() for l in f if l.strip()]
     sents = all_sents[:a.sentences]
 
     eot = tok.token_to_id(EOT)
@@ -102,10 +119,12 @@ def main():
                 # capitalised and only apply when the typed word is capitalised too.
                 cf = {}
                 for e in by.get(typed.lower(), []):
+                    if typed.isupper() and len(typed) > 1 and e != e.upper():
+                        continue     # VRS, DLB: a word in capitals only matches a dictionary entry in capitals
                     if e == e.lower():
                         surface = recase(e, typed)
                     elif typed[0].isupper():
-                        surface = e.upper() if typed.isupper() and len(typed) > 1 else e
+                        surface = e
                     else:
                         continue
                     cf[surface] = max(cf.get(surface, 0), freq[e])
