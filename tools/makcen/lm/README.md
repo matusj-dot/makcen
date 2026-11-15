@@ -28,6 +28,18 @@ python eval_restore.py          # the result table
 - `eval_restore.py` tests on sentences that were held out of training and compares the model
   with the dictionary on the same words. Send back its whole output.
 
+## Export for the phone
+
+```
+pip install onnx onnxruntime onnxscript
+python export_onnx.py
+python eval_restore.py --weight 0 --onnx ../.cache/lm/makcen_lm_q8.onnx
+```
+
+`export_onnx.py` writes the model in the format the keyboard loads, in full precision and with
+8-bit weights (about 7 MB), checks both against the original and times one decision. The last
+command re-runs the test with the 8-bit file to confirm it restores as well as the original.
+
 ## What the files do
 
 | File | |
@@ -35,6 +47,7 @@ python eval_restore.py          # the result table
 | `prepare_data.py` | Gets the text, sets 1% of articles aside for testing, trains the tokenizer (8,000 word pieces), encodes the text. `--text-file` uses your own text instead of Wikipedia. |
 | `train.py` | Trains a GPT-2-style model with about 7 million parameters for a fixed time. |
 | `eval_restore.py` | Strips diacritics from the test sentences and restores them word by word, left to right, choosing only among dictionary words. |
+| `export_onnx.py` | Converts the trained model to ONNX for the phone and verifies it. |
 | `common.py` | The model itself. |
 | `wordlist.tsv.gz` | The dictionary's words and frequencies, so the evaluation works without rebuilding the dictionary. |
 

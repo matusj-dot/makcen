@@ -74,6 +74,7 @@ def main():
     ap.add_argument("--dictionary", default=built if os.path.exists(built) else os.path.join(TOOLS, "lm", "wordlist.tsv.gz"))
     ap.add_argument("--data", default=DATA)
     ap.add_argument("--test-file", help="test on your own text instead of Wikipedia: a plain-text or .srt subtitle file with correct diacritics")
+    ap.add_argument("--onnx", help="score with an exported .onnx file instead of model.pt")
     ap.add_argument("--weight", type=float, help="weight of the dictionary frequency next to the model; default: tuned on 300 extra sentences")
     ap.add_argument("--show", type=int, default=15, help="print this many sentences the model got wrong")
     a = ap.parse_args()
@@ -91,6 +92,13 @@ def main():
 
     eot = tok.token_to_id(EOT)
     cache = {}
+    if a.onnx:      # score with the exported file, i.e. exactly what the phone will run
+        import onnxruntime as ort
+        sess = ort.InferenceSession(a.onnx, providers=["CPUExecutionProvider"])
+        logp_all = lambda x: torch.from_numpy(sess.run(None, {"ids": x.numpy()})[0])
+        print("scoring with", a.onnx)
+    else:
+        logp_all = lambda x: torch.log_softmax(model(x), -1)
 
     @torch.no_grad()
     def lm_scores(prefix, cands):
@@ -100,7 +108,7 @@ def main():
             encs = [tok.encode(prefix + c).ids[-(ctx - 1):] for c in cands]
             n = max(len(e) for e in encs)
             x = torch.tensor([[eot] + e + [0] * (n - len(e)) for e in encs])
-            logp = torch.log_softmax(model(x[:, :-1]), -1).gather(2, x[:, 1:, None])[..., 0]
+            logp = logp_all(x[:, :-1]).gather(2, x[:, 1:, None])[..., 0]
             cache[key] = [logp[i, :len(e)].sum().item() for i, e in enumerate(encs)]
         return cache[key]
 
