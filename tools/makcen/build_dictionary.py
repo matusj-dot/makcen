@@ -14,10 +14,12 @@ Pipeline
      otherwise as Capitalised or UPPER (Bratislava, EÚ). A lower-case word that also has a
      strong upper-case twin keeps both (nato / NATO).
   3. Validity: Hunspell must accept the form. Superlatives (naj- + valid form) count as valid.
-     Forms Hunspell does not know are NOT added automatically, with one exception: proper
-     nouns that are frequent in SNC (Fico, Slovnaft) - written to build/auto_names.txt.
-     Frequent unknown lower-case forms go to build/candidates.txt for a human to promote
-     into extra_words.txt.
+     Hunspell rejects many correct forms, so two kinds of unknown forms are added when the
+     edited corpus uses them often enough: proper nouns (Fico, Horníčkom - build/auto_names.txt)
+     and lower-case forms with at least 100 occurrences that are not a mis-accented twin of a
+     valid word and not a scanning artefact (líšiacich, lipoproteíny - build/auto_corpus_words.txt).
+     Other frequent unknown forms go to build/candidates.txt for a human to promote into
+     extra_words.txt.
   4. Text typed without diacritics inflates plain forms ("zeny" for "ženy"). The sloppy-typing
      rate is estimated per source from unambiguous pairs and subtracted. A plain form is dropped
      when both sources explain it as sloppy typing, or when its accented twin is 50 times more
@@ -165,10 +167,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cache", default=os.path.join(HERE, ".cache"))
     ap.add_argument("--out", default=os.path.join(HERE, "build"))
-    ap.add_argument("--min-snc", type=int, default=20, help="minimum SNC count for a candidate form")
+    ap.add_argument("--min-snc", type=int, default=5, help="minimum SNC count for a candidate form")
     ap.add_argument("--min-subs", type=int, default=3, help="minimum subtitle count for a candidate form")
     ap.add_argument("--snc-weight", type=float, default=0.5, help="weight of SNC in the blended frequency (rest: subtitles)")
-    ap.add_argument("--min-name", type=int, default=3000, help="SNC count from which an unknown proper noun is added automatically")
+    ap.add_argument("--min-name", type=int, default=300, help="SNC count from which an unknown proper noun is added automatically")
+    ap.add_argument("--min-corpus-word", type=int, default=100, help="SNC count from which a lower-case form unknown to Hunspell is added automatically")
     ap.add_argument("--shadow-factor", type=float, default=2.5, help="drop a plain form when its count is below this many times the expected sloppy-typing leak in both sources")
     ap.add_argument("--twin-ratio", type=float, default=50, help="also drop a plain form when its accented twin is this many times more frequent")
     ap.add_argument("--bigrams-per-word", type=int, default=8)
@@ -246,18 +249,30 @@ def main():
     # --- proper nouns Hunspell does not know, review candidates -----------------------------------
     cs_sub, en_sub = read_freq(f"{a.cache}/freq/cs_full.txt"), read_freq(f"{a.cache}/freq/en_full.txt")
     n_cs_sub, n_en_sub = sum(cs_sub.values()), sum(en_sub.values())   # Czech/English subtitles: noise filter only
-    auto_names, candidates = [], []
+    auto_names, auto_words, candidates = [], [], []
     all_stripped = {strip_dia(w.lower()) for w in good}
+    name_shape = re.compile(r"^[A-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ][a-záäčďéíĺľňóôŕšťúýž]+(-[A-ZÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽ][a-záäčďéíĺľňóôŕšťúýž]+)?$")
     for w, (cs, cb) in forms.items():
         if valid.get(w) or w in block:
             continue
-        if w != w.lower() and cs >= a.min_name and len(w) > 2:
-            auto_names.append((w, cs))
-        elif w == w.lower() and len(w) > 1 and strip_dia(w) not in all_stripped:
+        if w != w.lower():
+            # proper nouns: very frequent ones in any spelling (iPhone, Smer-SD), others only when they look like a name
+            if len(w) > 2 and (cs >= 3000 or (cs >= a.min_name and name_shape.match(w))):
+                auto_names.append((w, cs))
+        elif len(w) > 1 and strip_dia(w) not in all_stripped:
             score = a.snc_weight * cs / n_snc + (1 - a.snc_weight) * cb / n_subs
             foreign = max(cs_sub.get(w, 0) / n_cs_sub, en_sub.get(w, 0) / n_en_sub)
-            if (cs >= 3000 or cb >= 100) and score >= 4 * foreign:
+            if score < 4 * foreign:
+                continue    # more typical for Czech or English than for Slovak
+            # Hunspell rejects many correct forms (líšiacich, lipoproteíny). The corpus is edited text,
+            # so a form used often enough there is accepted - unless it looks like a scanning artefact:
+            run_together = (w[0] in "vzskoua" and valid.get(w[1:])) or (w.startswith("nie") and valid.get(w[3:]))  # voblasti, nieje
+            lost_ligature = valid.get("fi" + w) or valid.get("fl" + w)       # nančnej = finančnej
+            if cs >= a.min_corpus_word and len(w) >= 5 and not run_together and not lost_ligature:
+                auto_words.append((w, cs))
+            elif cs >= 3000 or cb >= 100:
                 candidates.append((w, cs, cb, score))
+    good |= {w for w, _ in auto_words}
     good |= {w for w, _ in auto_names}
 
     # --- 5: blended frequency -------------------------------------------------------------------------
@@ -318,6 +333,10 @@ def main():
         f.write("# Proper nouns Hunspell does not know, added because they are frequent in SNC: word, SNC count.\n# Put unwanted ones into blocklist.txt.\n")
         for w, c in sorted(auto_names, key=lambda x: -x[1]):
             f.write(f"{w}\t{c}\n")
+    with open(os.path.join(a.out, "auto_corpus_words.txt"), "w", encoding="utf-8") as f:
+        f.write("# Lower-case forms Hunspell does not know, added because they are frequent in SNC: word, SNC count.\n# Put wrong ones into blocklist.txt.\n")
+        for w, c in sorted(auto_words, key=lambda x: -x[1]):
+            f.write(f"{w}\t{c}\n")
     with open(os.path.join(a.out, "dropped_plain_forms.txt"), "w", encoding="utf-8") as f:
         f.write("# Valid words without diacritics dropped in favour of an accented twin:\n# word, SNC count, subtitle count, twin.\n")
         for w, cs, cb, t in sorted(shadow_dropped, key=lambda x: -(x[1] + x[2])):
@@ -326,8 +345,9 @@ def main():
     report = {
         "entries": len(entries),
         "bigrams": n_bi,
-        "hunspell_valid_forms": len(good) - len(auto_names),
+        "hunspell_valid_forms": len(good) - len(auto_names) - len(auto_words),
         "auto_names": len(auto_names),
+        "auto_corpus_words": len(auto_words),
         "manual_words": len(extra) + len(offensive),
         "candidates_for_review": len(candidates),
         "plain_forms_dropped": len(shadow_dropped),

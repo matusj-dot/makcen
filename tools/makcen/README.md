@@ -15,12 +15,13 @@ Outputs worth reading after a build:
 
 - `build/candidates.txt` – frequent forms Hunspell does not know. Promote the good ones to `extra_words.txt`.
 - `build/dropped_plain_forms.txt` – valid words without diacritics that were dropped so their accented twin gets restored (`zeny` → `ženy`, `mat` → `mať`). List a word in `extra_words.txt` to keep it.
+- `build/auto_corpus_words.txt` – lower-case forms Hunspell rejects, added because the corpus uses them at least 100 times (`líšiacich`, `lipoproteíny`). This list needs a linguist's eye most: put wrong ones into `blocklist.txt`.
 - `build/auto_names.txt` – proper nouns Hunspell does not know, added because they are frequent in the corpus (Tóth, Reuters). Put unwanted ones into `blocklist.txt`.
 - `build/evaluation.md` – the "biggest losses" table is the list of pairs that need sentence context (`byt`/`byť`).
 
 Copies of the last committed build's reports live in `docs/makcen/`.
 
-The downloads total about 700 MB. The first run validates ~880,000 forms with Hunspell and takes about twelve minutes on two cores; results are cached in `.cache/validity2.json`.
+The downloads total about 700 MB. The first run validates ~1.7 million forms with Hunspell and takes about half an hour on two cores; results are cached in `.cache/validity2.json`.
 
 ## Data licences
 

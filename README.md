@@ -4,8 +4,8 @@ An Android keyboard built for Slovak. Private by design: no internet permission,
 
 Mäkčeň is a fork of [HeliBoard](https://github.com/HeliBorg/HeliBoard) (itself based on AOSP LatinIME / OpenBoard). HeliBoard does the keyboard; Mäkčeň adds what Slovak needs:
 
-- **A Slovak dictionary of word forms, not lemmas** – about 460,000 inflected forms, each checked against the Slovak Hunspell dictionary, ranked by frequency in the Slovak National Corpus and in film subtitles.
-- **Word pairs** – 1.25 million frequent two-word sequences from the Slovak National Corpus, so suggestions can follow the previous word (`chcem` → `byť`).
+- **A Slovak dictionary of word forms, not lemmas** – about 690,000 inflected forms, checked against the Slovak Hunspell dictionary or attested often enough in the Slovak National Corpus, ranked by frequency in the Slovak National Corpus and in film subtitles.
+- **Word pairs** – 1.37 million frequent two-word sequences from the Slovak National Corpus, so suggestions can follow the previous word (`chcem` → `byť`).
 - **Diacritics restoration** – type `ziadne`, get `žiadne`.
 - **No "correcting" of valid Slovak words** – an inflected form like `stoloch` is in the dictionary, so it is left alone.
 - **Slovak first** – Slovak is the default language whatever the phone's system language is.

@@ -22,7 +22,13 @@
 7. **Own identity.** App icon, store texts in `fastlane/`, release signing, F-Droid.
 8. **Layout.** Decide on QWERTY vs QWERTZ default and whether a diacritics row helps.
 
+## Done (v0.3)
+- Wider dictionary, ~690,000 forms: rarer Hunspell-valid forms (corpus count from 5), 12,000 lower-case forms Hunspell wrongly rejects but the corpus uses at least 100 times (`auto_corpus_words.txt`), and 27,000 proper nouns (`auto_names.txt`).
+- Reason: on held-out Wikipedia sentences 5.6% of accented words were missing from the dictionary, which capped what any model could restore.
+
 ## Experiment: context model
+First result (Wikipedia only, 11 hours of training on a PC without a graphics card): on words that need diacritics the model restores 93.2% against 88.2% for the dictionary alone; on words the dictionary contains it chooses wrongly about 1.2% of the time against about 6.5%. Not yet tested on conversational text or mixed Slovak/English.
+
 A small GPT-2-style language model that re-ranks dictionary candidates using the sentence so far. Prototype scripts are in `tools/makcen/lm/` (see its README). Decision rule: it goes into the keyboard only if it clearly beats the dictionary on held-out sentences, and then only if it is fast enough on a phone.
 
 ## Principles

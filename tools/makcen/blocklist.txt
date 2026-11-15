@@ -1,1 +1,10 @@
 # Forms that must never be in the dictionary even though Hunspell accepts them. One per line.
+# common misspellings and web debris that are frequent enough in the corpus to be picked up
+nieje
+niesom
+niesu
+niesú
+kôli
+https
+http
+www
